@@ -274,22 +274,6 @@ sub _suggest_iav {
         else {
             $self->_avplus_advice( action => 'installav', advice => 'bad' );
         }
-
-    }
-
-    if ( $self->{iav}{installed} && _can_load_module('Cpanel::RPM') ) {
-
-        my $rpm = Cpanel::RPM->new();
-        if ( $rpm->has_rpm('cpanel-clamav') ) {
-
-            my $plugins_url = $self->base_path('scripts2/manage_plugins');
-            $self->add_warn_advice(
-                'key'          => 'ImunifyAV+_clam_and_iav_installed',
-                'block_notify' => 1,
-                'text'         => locale()->maketext("Uninstall [asis,ClamAV]."),
-                'suggestion'   => locale()->maketext( "[asis,ClamAV] and [asis,ImunifyAV] are both installed. [output,url,_1,Uninstall ClamAV,_2,_3]", $plugins_url, 'target', '_blank' ),
-            );
-        }
     }
 
     return 1;
