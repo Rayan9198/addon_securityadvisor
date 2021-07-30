@@ -96,6 +96,7 @@ sub get_available_rpms {
 
     return $cache->{'available_rpms'} if $cache->{'available_rpms'};
 
+    require Cpanel::FindBin;
     my $output = Cpanel::SafeRun::Full::run(
         'program' => Cpanel::FindBin::findbin('yum'),
         'args'    => [qw/-d 0 list all/],
@@ -122,6 +123,7 @@ sub get_installed_rpms {
 
     return $cache->{'installed_rpms'} if $cache->{'installed_rpms'};
 
+    require Cpanel::FindBin;
     my $output = Cpanel::SafeRun::Full::run(
         'program' => Cpanel::FindBin::findbin('rpm'),
         'args'    => [ '-qa', '--queryformat', '%{NAME} %{VERSION}-%{RELEASE}\n' ],

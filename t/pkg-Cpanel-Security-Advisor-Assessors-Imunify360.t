@@ -95,7 +95,7 @@ my $response_imunify_enabled = Cpanel::HTTP::Client::Response->new(
 );
 $response_imunify_enabled->header( 'Content-Type', 'application/json' );
 
-plan tests => 8 + 1;
+plan tests => 6 + 1;
 
 subtest 'When Imunify360 is disabled' => sub {
     plan tests => 1;
@@ -141,61 +141,18 @@ subtest 'When Imunify360 is not installed or licensed' => sub {
     cmp_deeply( $advice->[0], superhashof($expected), "It should advice buying an Imunify360 license" ) or diag explain $advice;
 };
 
-subtest 'When has a license but Imunify360 is not installed' => sub {
+subtest 'When Imunify360 is installed' => sub {
     plan tests => 1;
 
-    $imunify->redefine( is_imunify360_licensed  => sub { 1 } );
-    $imunify->redefine( is_imunify360_installed => sub { 0 } );
-
-    my $advice   = get_advice();
-    my $expected = {
-        'advice' => {
-            'key'          => 'Imunify360_install',
-            'block_notify' => ignore(),
-            'suggestion'   => ignore(),
-            'text'         => ignore(),
-            'type'         => ignore(),
-        },
-    };
-
-    cmp_deeply( $advice->[0], superhashof($expected), "It should advice to install Imunify360" ) or diag explain $advice;
-};
-
-subtest 'When Imunify360 is installed but not licensed' => sub {
-    plan tests => 1;
-
-    $imunify->redefine( is_imunify360_licensed  => sub { 0 } );
     $imunify->redefine( is_imunify360_installed => sub { 1 } );
 
     my $advice   = get_advice();
     my $expected = {
-        'advice' => {
-            'key'          => 'Imunify360_update_license',
-            'block_notify' => ignore(),
-            'suggestion'   => ignore(),
-            'text'         => ignore(),
-            'type'         => ignore(),
-        },
-    };
-
-    cmp_deeply( $advice->[0], superhashof($expected), "It should advice to renew the license" ) or diag explain $advice;
-};
-
-subtest 'When Imunify360 is installed and licensed' => sub {
-    plan tests => 1;
-
-    $imunify->redefine( is_imunify360_licensed  => sub { 1 } );
-    $imunify->redefine( is_imunify360_installed => sub { 1 } );
-
-    my $advice   = get_advice();
-    my $expected = {
-        'advice' => {
-            'key'          => 'Imunify360_present',
-            'block_notify' => ignore(),
-            'suggestion'   => ignore(),
-            'text'         => ignore(),
-            'type'         => ignore(),
-        },
+        'advice' => superhashof(
+            {
+                'key' => 'Imunify360_present',
+            }
+        ),
     };
 
     cmp_deeply( $advice->[0], superhashof($expected), "It should say that the server is protected" ) or diag explain $advice;

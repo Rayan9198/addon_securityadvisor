@@ -30,11 +30,12 @@ use strict;
 use warnings;
 
 use FindBin;
-use lib "$FindBin::Bin/lib", "$FindBin::Bin/../pkg";
+use lib "$FindBin::Bin/lib", "$FindBin::Bin/../../pkg";
 
 use Test::More;
 use Test::Deep;
 use Test::MockModule;
+use IO::Pty;
 
 use Test::Assessor ();
 
@@ -42,13 +43,20 @@ use Cpanel::Exception ();
 use Cpanel::Version   ();
 
 plan skip_all => 'Requires cPanel & WHM v66 or later' if Cpanel::Version::compare( Cpanel::Version::getversionnumber(), '<', '11.65' );
-plan tests => 6;
+plan tests    => 6;
+
+# Suppress warnings related to checking this path, and create relative paths that are realistic
+local $ENV{REQUEST_URI} = '/cpsessXXXXXXX/cgi/securityadvisor/index.cgi';
+
+# Avoid maketext failures related to html vs. text context when non-interactive
+my $pty = IO::Pty->new();
+local *STDIN = $pty->slave;
 
 subtest 'Missing executable' => sub {
     plan tests => 1;
 
     my $outdated = Test::MockModule->new('Cpanel::ProcessCheck::Outdated');
-    my $err = sub { die Cpanel::Exception::create( 'Service::BinaryNotFound', [ service => 'needs-restarting' ] ) };
+    my $err      = sub { die Cpanel::Exception::create( 'Service::BinaryNotFound', [ service => 'needs-restarting' ] ) };
     $outdated->mock(
         reboot_suggested   => $err,
         outdated_services  => $err,
@@ -68,7 +76,7 @@ subtest 'Handle unexpected error' => sub {
     plan tests => 6;
 
     my $outdated = Test::MockModule->new('Cpanel::ProcessCheck::Outdated');
-    my $err = sub { die "Simple string\n" };
+    my $err      = sub { die "Simple string\n" };
     $outdated->mock(
         reboot_suggested   => sub { },
         outdated_services  => sub { },
@@ -135,7 +143,7 @@ subtest 'Handle unsupported systems' => sub {
     plan tests => 2;
 
     my $outdated = Test::MockModule->new('Cpanel::ProcessCheck::Outdated');
-    my $err = sub { die Cpanel::Exception::create( 'Unsupported', 'The kernel does not support [asis,smaps].' ) };
+    my $err      = sub { die Cpanel::Exception::create( 'Unsupported', 'The kernel does not support [asis,smaps].' ) };
     $outdated->mock(
         reboot_suggested   => $err,
         outdated_services  => $err,
@@ -172,7 +180,7 @@ subtest 'Recommend reboot' => sub {
     my $expected = {
         key        => 'Processes_detected_running_from_outdated_executables',
         text       => 'The system’s core libraries or services have been updated.',
-        suggestion => 'Reboot the server (../scripts/dialog?dialog=reboot) to ensure the system benefits from these updates.',
+        suggestion => 'Reboot the server (../../scripts/dialog?dialog=reboot) to ensure the system benefits from these updates.',
         type       => $Cpanel::Security::Advisor::ADVISE_BAD,
     };
     cmp_assessor( 'Processes', [$expected], 'Core libraries updated' );
@@ -194,7 +202,7 @@ subtest 'Recommend reboot' => sub {
     $expected = {
         key        => 'Processes_detected_running_outdated_executables',
         text       => 'Detected 1 process that is running outdated executables: 1',
-        suggestion => 'Reboot the server (../scripts/dialog?dialog=reboot) to ensure the system benefits from these updates.',
+        suggestion => 'Reboot the server (../../scripts/dialog?dialog=reboot) to ensure the system benefits from these updates.',
         type       => $Cpanel::Security::Advisor::ADVISE_BAD,
     };
     cmp_assessor( 'Processes', [$expected], 'PID 1 updated' );
@@ -206,14 +214,14 @@ subtest 'Recommend process restart' => sub {
     my $outdated = Test::MockModule->new('Cpanel::ProcessCheck::Outdated');
     $outdated->mock(
         reboot_suggested   => sub { },
-        outdated_services  => sub { ('foo.service', 'bar.service') },
+        outdated_services  => sub { ( 'foo.service', 'bar.service' ) },
         outdated_processes => sub { },
     );
 
     my $expected = {
         key        => 'Processes_detected_running_outdated_services',
         text       => 'Detected 2 services that are running outdated executables: foo.service bar.service',
-        suggestion => 'You must take one of the following actions to ensure the system is up-to-date:<ul><li>Restart the listed services using “systemctl restart foo.service bar.service”; then click “Scan Again” to check non-service processes.</li><li>Reboot the server (../scripts/dialog?dialog=reboot).</li></ul>',
+        suggestion => 'You must take one of the following actions to ensure the system is up-to-date:<ul><li>Restart the listed services using “systemctl restart foo.service bar.service”; then click “Scan Again” to check non-service processes.</li><li>Reboot the server (../../scripts/dialog?dialog=reboot).</li></ul>',
         type       => $Cpanel::Security::Advisor::ADVISE_BAD,
     };
     cmp_assessor( 'Processes', [$expected], 'One process outdated' );
@@ -224,10 +232,10 @@ subtest 'Recommend process restart' => sub {
         outdated_processes => sub { (42) },
     );
 
-    my $expected = {
+    $expected = {
         key        => 'Processes_detected_running_outdated_executables',
         text       => 'Detected 1 process that is running outdated executables: 42',
-        suggestion => 'You must take one of the following actions to ensure the system is up-to-date:<ul><li>Restart the listed process.</li><li>Reboot the server (../scripts/dialog?dialog=reboot).</li></ul>',
+        suggestion => 'You must take one of the following actions to ensure the system is up-to-date:<ul><li>Restart the listed process.</li><li>Reboot the server (../../scripts/dialog?dialog=reboot).</li></ul>',
         type       => $Cpanel::Security::Advisor::ADVISE_BAD,
     };
     cmp_assessor( 'Processes', [$expected], 'One process outdated' );
@@ -238,7 +246,7 @@ subtest 'Recommend process restart' => sub {
     $expected = {
         key        => 'Processes_detected_running_outdated_executables',
         text       => 'Detected 5 processes that are running outdated executables: 42 1337 2017 9374 31337',
-        suggestion => 'You must take one of the following actions to ensure the system is up-to-date:<ul><li>Restart the listed processes.</li><li>Reboot the server (../scripts/dialog?dialog=reboot).</li></ul>',
+        suggestion => 'You must take one of the following actions to ensure the system is up-to-date:<ul><li>Restart the listed processes.</li><li>Reboot the server (../../scripts/dialog?dialog=reboot).</li></ul>',
         type       => $Cpanel::Security::Advisor::ADVISE_BAD,
     };
     cmp_assessor( 'Processes', [$expected], 'Multiple processes outdated' );
