@@ -68,7 +68,7 @@ sub generate_advice {
 
         }
 
-        # These checks will only run on v88 and highger.
+        # These checks will only run on v88 and higher.
         if (   Cpanel::Version::compare( $cpanel_version, '>=', $IMUNIFYAV_MINIMUM_CPWHM_VERSION )
             && $self->{i360}
             && !$self->{i360}{installed} ) {
@@ -277,17 +277,20 @@ sub _suggest_iav {
 
     }
 
-    if ( $self->{iav}{installed} && _can_load_module('Cpanel::RPM') ) {
+    if ( $self->{iav}{installed} ) {
+        my $rpm = _can_load_module('Cpanel::Binaries::Rpm')
+          ? Cpanel::Binaries::Rpm->new()                            # 98+
+          : _can_load_module('Cpanel::RPM') ? Cpanel::RPM->new()    # 96 and below
+          :                                   undef;
 
-        my $rpm = Cpanel::RPM->new();
-        if ( $rpm->has_rpm('cpanel-clamav') ) {
+        if ( $rpm && $rpm->has_rpm('cpanel-clamav') ) {
 
             my $plugins_url = $self->base_path('scripts2/manage_plugins');
-            $self->add_warn_advice(
+            $self->add_info_advice(
                 'key'          => 'ImunifyAV+_clam_and_iav_installed',
                 'block_notify' => 1,
-                'text'         => locale()->maketext("Uninstall [asis,ClamAV]."),
-                'suggestion'   => locale()->maketext( "[asis,ClamAV] and [asis,ImunifyAV] are both installed. [output,url,_1,Uninstall ClamAV,_2,_3]", $plugins_url, 'target', '_blank' ),
+                'text'         => locale()->maketext("You have both ClamAV and ImunifyAV installed."),
+                'suggestion'   => locale()->maketext( "ImunifyAV and ClamAV both provide antivirus coverage. To conserve resources you may want to [output,url,_1,Uninstall ClamAV,_2,_3]. However, ClamAV allows the “Scan outgoing messages for malware” setting to function. If you use this setting, keep ClamAV installed.", $plugins_url, 'target', '_blank' ),
             );
         }
     }

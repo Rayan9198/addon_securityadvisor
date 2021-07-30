@@ -35,12 +35,14 @@ use lib "$FindBin::Bin/lib", "$FindBin::Bin/../pkg";
 use Test::More;
 use Test::Deep;
 use Test::MockModule;
+use IO::Pty;
+
 use Test::Assessor;
 
 use Cpanel::Version ();
 
 plan skip_all => 'Requires cPanel & WHM v66 or later' if Cpanel::Version::compare( Cpanel::Version::getversionnumber(), '<', '11.65' );
-plan tests => 4;
+plan tests    => 4;
 
 use Cpanel::Security::Advisor::Assessors::Mysql ();
 
@@ -48,6 +50,10 @@ my $mock_connect = Test::MockModule->new('Cpanel::MysqlUtils::Connect');
 $mock_connect->redefine( 'connect', sub { } );
 
 local $ENV{'REQUEST_URI'} = '';    # for the URL that is returned by base_path
+
+# Avoid maketext failures related to html vs. text context when non-interactive
+my $pty = IO::Pty->new();
+local *STDIN = $pty->slave;
 
 subtest 'Check if Mysql can connect' => sub {
     plan tests => 1;
@@ -202,7 +208,7 @@ subtest 'Check for a public bind address' => sub {
     $loopback_mock->redefine( 'is_loopback' => 0 );
 
     subtest 'where the port is blocked by firewall 1' => sub {
-        $ipparse_mock->redefine( 'parse' => (4) );
+        $ipparse_mock->redefine( 'parse'          => (4) );
         $saferun_mock->redefine( 'saferunnoerror' => sub { return ('--dport 3306 -j REJECT') } );
         $mycnf_mock->redefine(
             'etc_my_cnf' => sub {
@@ -227,7 +233,7 @@ subtest 'Check for a public bind address' => sub {
     };
 
     subtest 'where the port is listening on a public address' => sub {
-        $ipparse_mock->redefine( 'parse' => (4) );
+        $ipparse_mock->redefine( 'parse'          => (4) );
         $saferun_mock->redefine( 'saferunnoerror' => sub { return ('') } );
         $mycnf_mock->redefine(
             'etc_my_cnf' => sub {
@@ -282,7 +288,7 @@ subtest 'Check for a public bind address' => sub {
     };
 
     subtest 'where the bind address is empty and the port is not blocked' => sub {
-        $ipparse_mock->redefine( 'parse' => (4) );
+        $ipparse_mock->redefine( 'parse'          => (4) );
         $saferun_mock->redefine( 'saferunnoerror' => sub { return (''); } );
         $mycnf_mock->redefine(
             'etc_my_cnf' => sub {

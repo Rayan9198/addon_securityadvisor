@@ -35,6 +35,7 @@ use lib "$FindBin::Bin/lib", "$FindBin::Bin/../pkg";
 use Test::More;
 use Test::Deep;
 use Test::MockModule;
+use IO::Pty;
 
 use Test::Assessor ();
 
@@ -42,12 +43,16 @@ use Cpanel::Exception ();
 use Cpanel::Version   ();
 
 plan skip_all => 'Requires cPanel & WHM v66 or later' if Cpanel::Version::compare( Cpanel::Version::getversionnumber(), '<', '11.65' );
-plan tests => 4;
+plan tests    => 4;
 
 my $envtype = Test::MockModule->new('Cpanel::KernelCare');
 $envtype->mock( system_supports_kernelcare => sub { 0 } );    # Disable KernelCare advertisements.
 
 local $ENV{'REQUEST_URI'} = 'mocking out to avoid warnings';
+
+# Avoid maketext failures related to html vs. text context when non-interactive
+my $pty = IO::Pty->new();
+local *STDIN = $pty->slave;
 
 subtest 'Error parsing boot configuration' => sub {
     plan tests => 2;
