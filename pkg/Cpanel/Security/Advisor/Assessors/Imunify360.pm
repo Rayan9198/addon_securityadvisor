@@ -69,9 +69,8 @@ sub generate_advice {
         }
 
         # These checks will only run on v88 and higher.
-        if (   Cpanel::Version::compare( $cpanel_version, '>=', $IMUNIFYAV_MINIMUM_CPWHM_VERSION )
-            && $self->{i360}
-            && !$self->{i360}{installed} ) {
+        if ( Cpanel::Version::compare( $cpanel_version, '>=', $IMUNIFYAV_MINIMUM_CPWHM_VERSION )
+            && !( $self->{i360} && $self->{i360}{installed} ) ) {
 
             if ( _can_load_module('Whostmgr::Store::Product::ImunifyAVPlus') ) {
 

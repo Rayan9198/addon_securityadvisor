@@ -63,6 +63,7 @@ $mocked_cpstore->redefine(
     get => sub {
         [
             { item_id => '373', short_name => 'Imunify360' },    # incomplete but sufficient for the tests
+            { item_id => '447', short_name => 'ImunifyAV+' },
         ]
     },
 );
@@ -95,7 +96,7 @@ my $response_imunify_enabled = Cpanel::HTTP::Client::Response->new(
 );
 $response_imunify_enabled->header( 'Content-Type', 'application/json' );
 
-plan tests => 6 + 1;
+plan tests => 8 + 1;
 
 subtest 'When Imunify360 is disabled' => sub {
     plan tests => 1;
@@ -192,6 +193,45 @@ subtest 'When the custom URL is NOT present' => sub {
         like( $advice->[0]->{advice}->{suggestion}, qr{scripts12/purchase_imunify360_init}, "It should link to the init script" )
           or diag explain $advice;
     }
+};
+
+$mocked_version_module->redefine( getversionnumber => sub { '11.88' } );
+my $imunify_avp = Test::MockModule->new('Whostmgr::Store::Product::ImunifyAVPlus');
+$imunify_avp->redefine( should_offer         => sub { 1 } );
+$imunify_avp->redefine( is_product_installed => sub { 0 } );
+$imunify_avp->redefine( is_product_licensed  => sub { 0 } );
+
+$mocked_HTTP->redefine( get => $response_imunify_disabled );
+
+subtest 'ImunifyAV+ advice when Imunify360 is disabled' => sub {
+    plan tests => 1;
+
+    my $advice   = get_advice();
+    my $expected = {
+        'advice' => superhashof(
+            {
+                'key' => 'ImunifyAV+_info',
+            }
+        ),
+    };
+
+    cmp_deeply(
+        $advice->[0],
+        superhashof($expected), 'ImunifyAV+ advice is offered when Imunify360 is disabled'
+    ) or diag explain $advice;
+};
+
+$mocked_HTTP->redefine( get => $response_imunify_enabled );
+$imunify->redefine( is_imunify360_installed => sub { 1 } );
+
+subtest 'ImunifyAV+ advice when Imunify360 is installed' => sub {
+    plan tests => 1;
+
+    my $advice = get_advice();
+    ok(
+        !( grep { /ImunifyAV/i } map { $_->{advice}->{key} } @{$advice} ),
+        'ImunifyAV+ advice is not offered when Imunify360 is installed'
+    ) or diag explain $advice;
 };
 
 sub get_advice {
